@@ -47,6 +47,106 @@ public sealed class ClientConnection : IDisposable, IAcpAgent
                 Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<WriteTextFileResponse>())
             };
         });
+
+        endpoint.SetRequestHandler(ClientMethods.SessionRequestPermission, async (request, ct) =>
+        {
+            var response = await client.RequestPermissionAsync(JsonSerializer.Deserialize(
+                request.Params,
+                AcpJsonSerializerContext.Default.Options.GetTypeInfo<RequestPermissionRequest>())!, ct);
+            return new JsonRpcResponse
+            {
+                Id = request.Id,
+                Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<RequestPermissionResponse>())
+            };
+        });
+
+        endpoint.SetRequestHandler(ClientMethods.TerminalCreate, async (request, ct) =>
+        {
+            var response = await client.CreateTerminalAsync(JsonSerializer.Deserialize(
+                request.Params,
+                AcpJsonSerializerContext.Default.Options.GetTypeInfo<CreateTerminalRequest>())!, ct);
+            return new JsonRpcResponse
+            {
+                Id = request.Id,
+                Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<CreateTerminalResponse>())
+            };
+        });
+
+        endpoint.SetRequestHandler(ClientMethods.TerminalKill, async (request, ct) =>
+        {
+            var response = await client.KillTerminalCommandAsync(JsonSerializer.Deserialize(
+                request.Params,
+                AcpJsonSerializerContext.Default.Options.GetTypeInfo<KillTerminalCommandRequest>())!, ct);
+            return new JsonRpcResponse
+            {
+                Id = request.Id,
+                Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<KillTerminalCommandResponse>())
+            };
+        });
+
+        endpoint.SetRequestHandler(ClientMethods.TerminalOutput, async (request, ct) =>
+        {
+            var response = await client.TerminalOutputAsync(JsonSerializer.Deserialize(
+                request.Params,
+                AcpJsonSerializerContext.Default.Options.GetTypeInfo<TerminalOutputRequest>())!, ct);
+            return new JsonRpcResponse
+            {
+                Id = request.Id,
+                Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<TerminalOutputRequest>())
+            };
+        });
+
+        endpoint.SetRequestHandler(ClientMethods.TerminalRelease, async (request, ct) =>
+        {
+            var response = await client.ReleaseTerminalAsync(JsonSerializer.Deserialize(
+                request.Params,
+                AcpJsonSerializerContext.Default.Options.GetTypeInfo<ReleaseTerminalRequest>())!, ct);
+            return new JsonRpcResponse
+            {
+                Id = request.Id,
+                Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<ReleaseTerminalResponse>())
+            };
+        });
+
+        endpoint.SetRequestHandler(ClientMethods.TerminalWaitForExit, async (request, ct) =>
+        {
+            var response = await client.WaitForTerminalExitAsync(JsonSerializer.Deserialize(
+                request.Params,
+                AcpJsonSerializerContext.Default.Options.GetTypeInfo<WaitForTerminalExitRequest>())!, ct);
+            return new JsonRpcResponse
+            {
+                Id = request.Id,
+                Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<WaitForTerminalExitResponse>())
+            };
+        });
+
+        endpoint.SetNotificationHandler(ClientMethods.SessionUpdate, async (notification, ct) =>
+        {
+            if (!notification.Params.HasValue)
+            {
+                throw new AcpException("Params is null", (int)JsonRpcErrorCode.InvalidParams);
+            }
+            
+            var sessionNotification = JsonSerializer.Deserialize(
+                notification.Params.Value,
+                AcpJsonSerializerContext.Default.Options.GetTypeInfo<SessionNotification>())!;
+            await client.SessionNotificationAsync(sessionNotification, ct);
+        });
+
+        endpoint.SetDefaultRequestHandler(async (request, ct) =>
+        {
+            var response = await client.ExtMethodAsync(request.Method, request.Params, ct);
+            return new JsonRpcResponse
+            {
+                Id = request.Id,
+                Result = response
+            };
+        });
+
+        endpoint.SetDefaultNotificationHandler(async (notification, ct) =>
+        {
+            await client.ExtNotificationAsync(notification.Method, notification.Params ?? default, ct);
+        });
     }
 
     async ValueTask<TResponse> RequestAsync<TRequest, TResponse>(string method, TRequest request, CancellationToken cancellationToken)

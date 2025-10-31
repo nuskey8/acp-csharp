@@ -17,6 +17,8 @@ internal sealed class JsonRpcEndpoint(Func<CancellationToken, ValueTask<string?>
     readonly ConcurrentDictionary<RequestId, TaskCompletionSource<JsonRpcResponse>> pendingRequests = new();
     readonly ConcurrentDictionary<string, Func<JsonRpcRequest, CancellationToken, ValueTask<JsonRpcResponse>>> requestHandlers = new();
     readonly ConcurrentDictionary<string, Func<JsonRpcNotification, CancellationToken, ValueTask>> notificationHandlers = new();
+    Func<JsonRpcRequest, CancellationToken, ValueTask<JsonRpcResponse>>? defaultRequestHandler;
+    Func<JsonRpcNotification, CancellationToken, ValueTask>? defaultNotificationHandler;
     int nextRequestId = 0;
 
     public void SetRequestHandler(string method, Func<JsonRpcRequest, CancellationToken, ValueTask<JsonRpcResponse>> handler)
@@ -27,6 +29,16 @@ internal sealed class JsonRpcEndpoint(Func<CancellationToken, ValueTask<string?>
     public void SetNotificationHandler(string method, Func<JsonRpcNotification, CancellationToken, ValueTask> handler)
     {
         notificationHandlers.TryAdd(method, handler);
+    }
+
+    public void SetDefaultRequestHandler(Func<JsonRpcRequest, CancellationToken, ValueTask<JsonRpcResponse>> handler)
+    {
+        defaultRequestHandler = handler;
+    }
+
+    public void SetDefaultNotificationHandler(Func<JsonRpcNotification, CancellationToken, ValueTask> handler)
+    {
+        defaultNotificationHandler = handler;
     }
 
     public async Task ReadMessagesAsync(CancellationToken cancellationToken = default)
@@ -49,6 +61,11 @@ internal sealed class JsonRpcEndpoint(Func<CancellationToken, ValueTask<string?>
                         if (requestHandlers.TryGetValue(request.Method, out var requestHandler))
                         {
                             var response = await requestHandler(request, cancellationToken);
+                            await writeFunc(JsonSerializer.Serialize(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<JsonRpcMessage>()), cancellationToken);
+                        }
+                        else if (defaultRequestHandler != null)
+                        {
+                            var response = await defaultRequestHandler(request, cancellationToken);
                             await writeFunc(JsonSerializer.Serialize(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<JsonRpcMessage>()), cancellationToken);
                         }
                         else
@@ -76,6 +93,10 @@ internal sealed class JsonRpcEndpoint(Func<CancellationToken, ValueTask<string?>
                         if (notificationHandlers.TryGetValue(notification.Method, out var notificationHandler))
                         {
                             await notificationHandler(notification, cancellationToken);
+                        }
+                        else if (defaultNotificationHandler != null)
+                        {
+                            await defaultNotificationHandler(notification, cancellationToken);
                         }
                         break;
                     default:

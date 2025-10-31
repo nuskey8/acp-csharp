@@ -2,9 +2,136 @@ using System.Text.Json;
 
 namespace AgentClientProtocol;
 
-public sealed class AgentConnection(IAcpAgent agent, TextReader reader, TextWriter writer) : IDisposable
+public sealed class AgentConnection : IDisposable
 {
     readonly CancellationTokenSource cts = new();
+    readonly JsonRpcEndpoint endpoint;
+
+    public AgentConnection(IAcpAgent agent, TextReader reader, TextWriter writer)
+    {
+        endpoint = new(
+            _ => new(reader.ReadLine()),
+            (s, _) =>
+            {
+                writer.WriteLine(s);
+                return default;
+            },
+            (s, _) => default
+        );
+
+        endpoint.SetRequestHandler(AgentMethods.Initialize, async (request, ct) =>
+        {
+            var response = await agent.InitializeAsync(JsonSerializer.Deserialize(
+                request.Params,
+                AcpJsonSerializerContext.Default.Options.GetTypeInfo<InitializeRequest>())!, ct);
+            return new JsonRpcResponse
+            {
+                Id = request.Id,
+                Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<InitializeResponse>())
+            };
+        });
+
+        endpoint.SetRequestHandler(AgentMethods.Authenticate, async (request, ct) =>
+        {
+            var response = await agent.AuthenticateAsync(JsonSerializer.Deserialize(
+                request.Params,
+                AcpJsonSerializerContext.Default.Options.GetTypeInfo<AuthenticateRequest>())!, ct);
+            return new JsonRpcResponse
+            {
+                Id = request.Id,
+                Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<AuthenticateResponse>())
+            };
+        });
+
+        endpoint.SetRequestHandler(AgentMethods.SessionNew, async (request, ct) =>
+        {
+            var response = await agent.NewSessionAsync(JsonSerializer.Deserialize(
+                request.Params,
+                AcpJsonSerializerContext.Default.Options.GetTypeInfo<NewSessionRequest>())!, ct);
+            return new JsonRpcResponse
+            {
+                Id = request.Id,
+                Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<NewSessionResponse>())
+            };
+        });
+
+        endpoint.SetRequestHandler(AgentMethods.SessionPrompt, async (request, ct) =>
+        {
+            var response = await agent.PromptAsync(JsonSerializer.Deserialize(
+                request.Params,
+                AcpJsonSerializerContext.Default.Options.GetTypeInfo<PromptRequest>())!, ct);
+            return new JsonRpcResponse
+            {
+                Id = request.Id,
+                Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<PromptResponse>())
+            };
+        });
+
+        endpoint.SetRequestHandler(AgentMethods.SessionLoad, async (request, ct) =>
+        {
+            var response = await agent.LoadSessionAsync(JsonSerializer.Deserialize(
+                request.Params,
+                AcpJsonSerializerContext.Default.Options.GetTypeInfo<LoadSessionRequest>())!, ct);
+            return new JsonRpcResponse
+            {
+                Id = request.Id,
+                Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<LoadSessionResponse>())
+            };
+        });
+
+        endpoint.SetRequestHandler(AgentMethods.SessionSetMode, async (request, ct) =>
+        {
+            var response = await agent.SetSessionModeAsync(JsonSerializer.Deserialize(
+                request.Params,
+                AcpJsonSerializerContext.Default.Options.GetTypeInfo<SetSessionModeRequest>())!, ct);
+            return new JsonRpcResponse
+            {
+                Id = request.Id,
+                Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<SetSessionModeResponse>())
+            };
+        });
+
+        endpoint.SetRequestHandler(AgentMethods.SessionSetModel, async (request, ct) =>
+        {
+            var response = await agent.SetSessionModelAsync(JsonSerializer.Deserialize(
+                request.Params,
+                AcpJsonSerializerContext.Default.Options.GetTypeInfo<SetSessionModelRequest>())!, ct);
+            return new JsonRpcResponse
+            {
+                Id = request.Id,
+                Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<SetSessionModelResponse>())
+            };
+        });
+
+        endpoint.SetNotificationHandler(AgentMethods.SessionCancel, async (notification, ct) =>
+        {
+            if (!notification.Params.HasValue)
+            {
+                throw new AcpException("Params is null", (int)JsonRpcErrorCode.InvalidParams);
+            }
+
+            var cancelNotification = JsonSerializer.Deserialize(
+                notification.Params.Value,
+                AcpJsonSerializerContext.Default.Options.GetTypeInfo<CancelNotification>())!;
+            await agent.CancelAsync(cancelNotification, ct);
+        });
+
+        endpoint.SetDefaultRequestHandler(async (request, ct) =>
+        {
+            var response = await agent.ExtMethodAsync(request.Method, request.Params, ct);
+            return new JsonRpcResponse
+            {
+                Id = request.Id,
+                Result = response
+            };
+        });
+
+        endpoint.SetDefaultNotificationHandler(async (notification, ct) =>
+        {
+            await agent.ExtNotificationAsync(notification.Method, notification.Params ?? default, ct);
+        });
+    }
+
 
     public void Dispose()
     {
@@ -14,174 +141,6 @@ public sealed class AgentConnection(IAcpAgent agent, TextReader reader, TextWrit
 
     public void Open()
     {
-        Task.Run(ReadMessagesAsync, cts.Token);
-    }
-
-    async Task ReadMessagesAsync()
-    {
-        await Task.Yield();
-
-        while (true)
-        {
-            cts.Token.ThrowIfCancellationRequested();
-
-            var line = reader.ReadLine();
-            if (string.IsNullOrWhiteSpace(line)) continue;
-
-            var trimmedLineSpan = line.AsSpan().Trim();
-            if (trimmedLineSpan.Length < 2 || trimmedLineSpan[0] != '{' || trimmedLineSpan[^1] != '}') continue; // skip non-json input
-
-            var message = JsonSerializer.Deserialize(line, AcpJsonSerializerContext.Default.Options.GetTypeInfo<JsonRpcMessage>()!);
-
-            switch (message)
-            {
-                case JsonRpcRequest request:
-                    try
-                    {
-                        JsonRpcResponse rpcResponse;
-                        switch (request.Method)
-                        {
-                            case AgentMethods.Initialize:
-                                {
-                                    var response = await agent.InitializeAsync(
-                                        JsonSerializer.Deserialize(request.Params!, AcpJsonSerializerContext.Default.Options.GetTypeInfo<InitializeRequest>())!,
-                                        cts.Token);
-                                    rpcResponse = new()
-                                    {
-                                        Id = request.Id,
-                                        Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<InitializeResponse>()!),
-                                    };
-                                }
-                                break;
-                            case AgentMethods.Authenticate:
-                                {
-                                    var response = await agent.AuthenticateAsync(
-                                        JsonSerializer.Deserialize(request.Params!, AcpJsonSerializerContext.Default.Options.GetTypeInfo<AuthenticateRequest>())!,
-                                        cts.Token);
-                                    rpcResponse = new()
-                                    {
-                                        Id = request.Id,
-                                        Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<AuthenticateResponse>()!),
-                                    };
-                                }
-                                break;
-                            case AgentMethods.SessionNew:
-                                {
-                                    var response = await agent.NewSessionAsync(
-                                        JsonSerializer.Deserialize(request.Params!, AcpJsonSerializerContext.Default.Options.GetTypeInfo<NewSessionRequest>())!,
-                                        cts.Token);
-                                    rpcResponse = new()
-                                    {
-                                        Id = request.Id,
-                                        Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<NewSessionResponse>()!),
-                                    };
-                                }
-                                break;
-                            case AgentMethods.SessionLoad:
-                                {
-                                    var response = await agent.LoadSessionAsync(
-                                        JsonSerializer.Deserialize(request.Params!, AcpJsonSerializerContext.Default.Options.GetTypeInfo<LoadSessionRequest>())!,
-                                        cts.Token);
-                                    rpcResponse = new()
-                                    {
-                                        Id = request.Id,
-                                        Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<LoadSessionResponse>()!),
-                                    };
-                                }
-                                break;
-                            case AgentMethods.SessionPrompt:
-                                {
-                                    var response = await agent.PromptAsync(
-                                        JsonSerializer.Deserialize(request.Params!, AcpJsonSerializerContext.Default.Options.GetTypeInfo<PromptRequest>())!,
-                                        cts.Token);
-                                    rpcResponse = new()
-                                    {
-                                        Id = request.Id,
-                                        Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<PromptResponse>()!),
-                                    };
-                                }
-                                break;
-                            case AgentMethods.SessionSetMode:
-                                {
-                                    var response = await agent.SetSessionModeAsync(
-                                        JsonSerializer.Deserialize(request.Params!, AcpJsonSerializerContext.Default.Options.GetTypeInfo<SetSessionModeRequest>())!,
-                                        cts.Token);
-                                    rpcResponse = new()
-                                    {
-                                        Id = request.Id,
-                                        Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<SetSessionModeResponse>()!),
-                                    };
-                                }
-                                break;
-                            case AgentMethods.SessionSetModel:
-                                {
-                                    var response = await agent.SetSessionModelAsync(
-                                        JsonSerializer.Deserialize(request.Params!, AcpJsonSerializerContext.Default.Options.GetTypeInfo<SetSessionModelRequest>())!,
-                                        cts.Token);
-                                    rpcResponse = new()
-                                    {
-                                        Id = request.Id,
-                                        Result = JsonSerializer.SerializeToElement(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<SetSessionModelResponse>()!),
-                                    };
-                                }
-                                break;
-                            default:
-                                {
-                                    var response = await agent.ExtMethodAsync(request.Method, request.Params, cts.Token);
-                                    rpcResponse = new()
-                                    {
-                                        Id = request.Id,
-                                        Result = response,
-                                    };
-                                }
-                                break;
-                        }
-
-                        writer.WriteLine(JsonSerializer.Serialize(rpcResponse, AcpJsonSerializerContext.Default.Options.GetTypeInfo<JsonRpcResponse>()));
-                    }
-                    catch (OperationCanceledException) when (cts.IsCancellationRequested)
-                    {
-                        throw;
-                    }
-                    catch (Exception ex)
-                    {
-                        var errorResponse = new JsonRpcResponse
-                        {
-                            Id = request.Id,
-                            Error = new JsonRpcError
-                            {
-                                Code = -32000,
-                                Message = ex.Message,
-                                Data = ex.ToString()
-                            }
-                        };
-                        writer.WriteLine(JsonSerializer.Serialize(errorResponse, AcpJsonSerializerContext.Default.Options.GetTypeInfo<JsonRpcResponse>()));
-                    }
-                    break;
-                case JsonRpcNotification notification:
-                    try
-                    {
-                        switch (notification.Method)
-                        {
-                            case AgentMethods.SessionCancel:
-                                await agent.CancelAsync(
-                                    JsonSerializer.Deserialize(notification.Method, AcpJsonSerializerContext.Default.Options.GetTypeInfo<CancelNotification>())!,
-                                    cts.Token);
-                                break;
-                        }
-                    }
-                    catch (OperationCanceledException) when (cts.IsCancellationRequested)
-                    {
-                        throw;
-                    }
-                    catch (Exception)
-                    {
-                        // ignore
-                    }
-                    break;
-                default:
-                    throw new AcpException($"Invalid request type: {message?.GetType().Name}", -32000);
-            }
-        }
+        Task.Run(async () => await endpoint.ReadMessagesAsync(cts.Token));
     }
 }

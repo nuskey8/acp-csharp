@@ -2,15 +2,14 @@ using System.Text.Json;
 
 namespace AgentClientProtocol;
 
-public sealed class ClientConnection : IDisposable, IAcpAgent
+public sealed class ClientSideConnection : IDisposable, IAcpAgent
 {
     readonly IAcpClient client;
 
-    // TODO: optimize I/O
     readonly CancellationTokenSource cts = new();
     readonly JsonRpcEndpoint endpoint;
 
-    public ClientConnection(Func<IAcpAgent, IAcpClient> toClient, TextReader reader, TextWriter writer)
+    public ClientSideConnection(Func<IAcpAgent, IAcpClient> toClient, TextReader reader, TextWriter writer)
     {
         client = toClient(this);
 
@@ -126,7 +125,7 @@ public sealed class ClientConnection : IDisposable, IAcpAgent
             {
                 throw new AcpException("Params is null", (int)JsonRpcErrorCode.InvalidParams);
             }
-            
+
             var sessionNotification = JsonSerializer.Deserialize(
                 notification.Params.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<SessionNotification>())!;

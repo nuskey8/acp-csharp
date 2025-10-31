@@ -23,7 +23,7 @@ try
     }
 
     var client = new ExampleClient();
-    var connection = new ClientConnection(_ => client, process.StandardOutput, process.StandardInput);
+    var connection = new ClientSideConnection(_ => client, process.StandardOutput, process.StandardInput);
 
     connection.Open();
 

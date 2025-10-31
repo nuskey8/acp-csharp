@@ -2,12 +2,12 @@ using System.Text.Json;
 
 namespace AgentClientProtocol;
 
-public sealed class AgentConnection : IDisposable
+public sealed class AgentSideConnection : IDisposable
 {
     readonly CancellationTokenSource cts = new();
     readonly JsonRpcEndpoint endpoint;
 
-    public AgentConnection(IAcpAgent agent, TextReader reader, TextWriter writer)
+    public AgentSideConnection(IAcpAgent agent, TextReader reader, TextWriter writer)
     {
         endpoint = new(
             _ => new(reader.ReadLine()),

@@ -13,6 +13,6 @@ public interface IAcpClient
     ValueTask<ReleaseTerminalResponse> ReleaseTerminalAsync(ReleaseTerminalRequest request, CancellationToken cancellationToken = default);
     ValueTask<WaitForTerminalExitResponse> WaitForTerminalExitAsync(WaitForTerminalExitRequest request, CancellationToken cancellationToken = default);
     ValueTask<KillTerminalCommandResponse> KillTerminalCommandAsync(KillTerminalCommandRequest request, CancellationToken cancellationToken = default);
-    ValueTask<JsonElement> ExtMethodAsync(JsonElement request, CancellationToken cancellationToken = default);
-    ValueTask ExtNotificationAsync(JsonElement notification, CancellationToken cancellationToken = default);
+    ValueTask<JsonElement> ExtMethodAsync(string method, JsonElement request, CancellationToken cancellationToken = default);
+    ValueTask ExtNotificationAsync(string method, JsonElement notification, CancellationToken cancellationToken = default);
 }

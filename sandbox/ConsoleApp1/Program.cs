@@ -150,23 +150,6 @@ class ExampleClient : IAcpClient
     public ValueTask<ReleaseTerminalResponse> ReleaseTerminalAsync(ReleaseTerminalRequest request, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     public ValueTask<WaitForTerminalExitResponse> WaitForTerminalExitAsync(WaitForTerminalExitRequest request, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     public ValueTask<KillTerminalCommandResponse> KillTerminalCommandAsync(KillTerminalCommandRequest request, CancellationToken cancellationToken = default) => throw new NotImplementedException();
-    public ValueTask<JsonElement> ExtMethodAsync(JsonElement request, CancellationToken cancellationToken = default) => throw new NotImplementedException();
-    public ValueTask ExtNotificationAsync(JsonElement notification, CancellationToken cancellationToken = default) => throw new NotImplementedException();
-}
-
-public class DuplexStream(Stream readStream, Stream writeStream) : Stream
-{
-    private readonly Stream readStream = readStream;
-    private readonly Stream writeStream = writeStream;
-
-    public override bool CanRead => readStream.CanRead;
-    public override bool CanWrite => writeStream.CanWrite;
-    public override bool CanSeek => false;
-    public override long Length => throw new NotSupportedException();
-    public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
-    public override void Flush() => writeStream.Flush();
-    public override int Read(byte[] buffer, int offset, int count) => readStream.Read(buffer, offset, count);
-    public override void Write(byte[] buffer, int offset, int count) => writeStream.Write(buffer, offset, count);
-    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-    public override void SetLength(long value) => throw new NotSupportedException();
+    public ValueTask<JsonElement> ExtMethodAsync(string method, JsonElement request, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+    public ValueTask ExtNotificationAsync(string method, JsonElement notification, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 }

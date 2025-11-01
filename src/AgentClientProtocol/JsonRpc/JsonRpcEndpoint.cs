@@ -58,17 +58,32 @@ internal sealed class JsonRpcEndpoint(Func<CancellationToken, ValueTask<string?>
                 switch (message)
                 {
                     case JsonRpcRequest request:
-                        if (requestHandlers.TryGetValue(request.Method, out var requestHandler))
+                        try
                         {
-                            var response = await requestHandler(request, cancellationToken);
-                            await writeFunc(JsonSerializer.Serialize(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<JsonRpcMessage>()), cancellationToken);
+                            if (requestHandlers.TryGetValue(request.Method, out var requestHandler))
+                            {
+                                var response = await requestHandler(request, cancellationToken);
+                                await writeFunc(JsonSerializer.Serialize(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<JsonRpcMessage>()), cancellationToken);
+                            }
+                            else if (defaultRequestHandler != null)
+                            {
+                                var response = await defaultRequestHandler(request, cancellationToken);
+                                await writeFunc(JsonSerializer.Serialize(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<JsonRpcMessage>()), cancellationToken);
+                            }
+                            else
+                            {
+                                await writeFunc(JsonSerializer.Serialize(new JsonRpcResponse
+                                {
+                                    Id = request.Id,
+                                    Error = new()
+                                    {
+                                        Code = (int)JsonRpcErrorCode.MethodNotFound,
+                                        Message = $"Method '{request.Method}' is not available",
+                                    }
+                                }, AcpJsonSerializerContext.Default.Options.GetTypeInfo<JsonRpcMessage>()), cancellationToken);
+                            }
                         }
-                        else if (defaultRequestHandler != null)
-                        {
-                            var response = await defaultRequestHandler(request, cancellationToken);
-                            await writeFunc(JsonSerializer.Serialize(response, AcpJsonSerializerContext.Default.Options.GetTypeInfo<JsonRpcMessage>()), cancellationToken);
-                        }
-                        else
+                        catch (NotImplementedException)
                         {
                             await writeFunc(JsonSerializer.Serialize(new JsonRpcResponse
                             {

@@ -132,7 +132,6 @@ public sealed class AgentSideConnection : IDisposable
         });
     }
 
-
     public void Dispose()
     {
         cts.Cancel();

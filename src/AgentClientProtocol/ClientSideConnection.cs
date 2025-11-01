@@ -25,9 +25,12 @@ public sealed class ClientSideConnection : IDisposable, IAcpAgent
 
         endpoint.SetRequestHandler(ClientMethods.FsReadTextFile, async (request, ct) =>
         {
+            AcpException.ThrowIfParamIsNull(request.Params);
+
             var response = await client.ReadTextFileAsync(JsonSerializer.Deserialize(
-                request.Params,
+                request.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<ReadTextFileRequest>())!, ct);
+
             return new JsonRpcResponse
             {
                 Id = request.Id,
@@ -37,9 +40,12 @@ public sealed class ClientSideConnection : IDisposable, IAcpAgent
 
         endpoint.SetRequestHandler(ClientMethods.FsWriteTextFile, async (request, ct) =>
         {
+            AcpException.ThrowIfParamIsNull(request.Params);
+
             var response = await client.WriteTextFileAsync(JsonSerializer.Deserialize(
-                request.Params,
+                request.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<WriteTextFileRequest>())!, ct);
+
             return new JsonRpcResponse
             {
                 Id = request.Id,
@@ -49,9 +55,12 @@ public sealed class ClientSideConnection : IDisposable, IAcpAgent
 
         endpoint.SetRequestHandler(ClientMethods.SessionRequestPermission, async (request, ct) =>
         {
+            AcpException.ThrowIfParamIsNull(request.Params);
+
             var response = await client.RequestPermissionAsync(JsonSerializer.Deserialize(
-                request.Params,
+                request.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<RequestPermissionRequest>())!, ct);
+
             return new JsonRpcResponse
             {
                 Id = request.Id,
@@ -61,9 +70,12 @@ public sealed class ClientSideConnection : IDisposable, IAcpAgent
 
         endpoint.SetRequestHandler(ClientMethods.TerminalCreate, async (request, ct) =>
         {
+            AcpException.ThrowIfParamIsNull(request.Params);
+
             var response = await client.CreateTerminalAsync(JsonSerializer.Deserialize(
-                request.Params,
+                request.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<CreateTerminalRequest>())!, ct);
+
             return new JsonRpcResponse
             {
                 Id = request.Id,
@@ -73,9 +85,12 @@ public sealed class ClientSideConnection : IDisposable, IAcpAgent
 
         endpoint.SetRequestHandler(ClientMethods.TerminalKill, async (request, ct) =>
         {
+            AcpException.ThrowIfParamIsNull(request.Params);
+
             var response = await client.KillTerminalCommandAsync(JsonSerializer.Deserialize(
-                request.Params,
+                request.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<KillTerminalCommandRequest>())!, ct);
+
             return new JsonRpcResponse
             {
                 Id = request.Id,
@@ -85,9 +100,12 @@ public sealed class ClientSideConnection : IDisposable, IAcpAgent
 
         endpoint.SetRequestHandler(ClientMethods.TerminalOutput, async (request, ct) =>
         {
+            AcpException.ThrowIfParamIsNull(request.Params);
+
             var response = await client.TerminalOutputAsync(JsonSerializer.Deserialize(
-                request.Params,
+                request.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<TerminalOutputRequest>())!, ct);
+
             return new JsonRpcResponse
             {
                 Id = request.Id,
@@ -97,9 +115,12 @@ public sealed class ClientSideConnection : IDisposable, IAcpAgent
 
         endpoint.SetRequestHandler(ClientMethods.TerminalRelease, async (request, ct) =>
         {
+            AcpException.ThrowIfParamIsNull(request.Params);
+
             var response = await client.ReleaseTerminalAsync(JsonSerializer.Deserialize(
-                request.Params,
+                request.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<ReleaseTerminalRequest>())!, ct);
+
             return new JsonRpcResponse
             {
                 Id = request.Id,
@@ -109,9 +130,12 @@ public sealed class ClientSideConnection : IDisposable, IAcpAgent
 
         endpoint.SetRequestHandler(ClientMethods.TerminalWaitForExit, async (request, ct) =>
         {
+            AcpException.ThrowIfParamIsNull(request.Params);
+
             var response = await client.WaitForTerminalExitAsync(JsonSerializer.Deserialize(
-                request.Params,
+                request.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<WaitForTerminalExitRequest>())!, ct);
+
             return new JsonRpcResponse
             {
                 Id = request.Id,
@@ -121,20 +145,19 @@ public sealed class ClientSideConnection : IDisposable, IAcpAgent
 
         endpoint.SetNotificationHandler(ClientMethods.SessionUpdate, async (notification, ct) =>
         {
-            if (!notification.Params.HasValue)
-            {
-                throw new AcpException("Params is null", (int)JsonRpcErrorCode.InvalidParams);
-            }
+            AcpException.ThrowIfParamIsNull(notification.Params);
 
             var sessionNotification = JsonSerializer.Deserialize(
-                notification.Params.Value,
+                notification.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<SessionNotification>())!;
+
             await client.SessionNotificationAsync(sessionNotification, ct);
         });
 
         endpoint.SetDefaultRequestHandler(async (request, ct) =>
         {
-            var response = await client.ExtMethodAsync(request.Method, request.Params, ct);
+            var response = await client.ExtMethodAsync(request.Method, request.Params ?? default, ct);
+
             return new JsonRpcResponse
             {
                 Id = request.Id,
@@ -159,7 +182,7 @@ public sealed class ClientSideConnection : IDisposable, IAcpAgent
 
         if (response.Result == null)
         {
-            throw new AcpException($"{response.Error!.Message}: {response.Error.Data}", response.Error.Code);
+            throw new AcpException($"{response.Error!.Message}", response.Error.Data, response.Error.Code);
         }
 
         return JsonSerializer.Deserialize(response.Result.Value, AcpJsonSerializerContext.Default.Options.GetTypeInfo<TResponse>())!;
@@ -226,7 +249,7 @@ public sealed class ClientSideConnection : IDisposable, IAcpAgent
 
         if (response.Result == null)
         {
-            throw new AcpException($"{response.Error!.Message}: {response.Error.Data}", response.Error.Code);
+            throw new AcpException($"{response.Error!.Message}", response.Error.Data, response.Error.Code);
         }
 
         return response.Result.Value;

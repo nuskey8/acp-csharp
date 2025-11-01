@@ -19,7 +19,8 @@ public record JsonRpcRequest : JsonRpcMessage
     public required string Method { get; init; }
 
     [JsonPropertyName("params")]
-    public JsonElement Params { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonElement? Params { get; init; }
 }
 
 public record JsonRpcResponse : JsonRpcMessage
@@ -55,8 +56,8 @@ public record JsonRpcError
     public required string Message { get; init; }
 
     [JsonPropertyName("data")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public object? Data { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public JsonElement? Data { get; init; }
 }
 
 public sealed class JsonRpcMessageJsonConverter : JsonConverter<JsonRpcMessage>

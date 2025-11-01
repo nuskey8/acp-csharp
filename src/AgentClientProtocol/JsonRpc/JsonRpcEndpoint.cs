@@ -95,6 +95,19 @@ internal sealed class JsonRpcEndpoint(Func<CancellationToken, ValueTask<string?>
                                 }
                             }, AcpJsonSerializerContext.Default.Options.GetTypeInfo<JsonRpcMessage>()), cancellationToken);
                         }
+                        catch (AcpException acpException)
+                        {
+                            await writeFunc(JsonSerializer.Serialize(new JsonRpcResponse
+                            {
+                                Id = request.Id,
+                                Error = new()
+                                {
+                                    Code = acpException.Code,
+                                    Data = acpException.ErrorData,
+                                    Message = acpException.Message,
+                                }
+                            }, AcpJsonSerializerContext.Default.Options.GetTypeInfo<JsonRpcMessage>()), cancellationToken);
+                        }
                         break;
                     case JsonRpcResponse response:
                         {
@@ -115,7 +128,7 @@ internal sealed class JsonRpcEndpoint(Func<CancellationToken, ValueTask<string?>
                         }
                         break;
                     default:
-                        throw new AcpException($"Invalid response type: {message?.GetType().Name}", (int)JsonRpcErrorCode.InternalError);
+                        throw new AcpException($"Invalid response type: {message?.GetType().Name}", null, (int)JsonRpcErrorCode.InternalError);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

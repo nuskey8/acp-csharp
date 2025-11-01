@@ -21,9 +21,12 @@ public sealed class AgentSideConnection : IDisposable
 
         endpoint.SetRequestHandler(AgentMethods.Initialize, async (request, ct) =>
         {
+            AcpException.ThrowIfParamIsNull(request.Params);
+
             var response = await agent.InitializeAsync(JsonSerializer.Deserialize(
-                request.Params,
+                request.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<InitializeRequest>())!, ct);
+
             return new JsonRpcResponse
             {
                 Id = request.Id,
@@ -33,9 +36,12 @@ public sealed class AgentSideConnection : IDisposable
 
         endpoint.SetRequestHandler(AgentMethods.Authenticate, async (request, ct) =>
         {
+            AcpException.ThrowIfParamIsNull(request.Params);
+
             var response = await agent.AuthenticateAsync(JsonSerializer.Deserialize(
-                request.Params,
+                request.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<AuthenticateRequest>())!, ct);
+
             return new JsonRpcResponse
             {
                 Id = request.Id,
@@ -45,9 +51,12 @@ public sealed class AgentSideConnection : IDisposable
 
         endpoint.SetRequestHandler(AgentMethods.SessionNew, async (request, ct) =>
         {
+            AcpException.ThrowIfParamIsNull(request.Params);
+
             var response = await agent.NewSessionAsync(JsonSerializer.Deserialize(
-                request.Params,
+                request.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<NewSessionRequest>())!, ct);
+
             return new JsonRpcResponse
             {
                 Id = request.Id,
@@ -57,9 +66,12 @@ public sealed class AgentSideConnection : IDisposable
 
         endpoint.SetRequestHandler(AgentMethods.SessionPrompt, async (request, ct) =>
         {
+            AcpException.ThrowIfParamIsNull(request.Params);
+
             var response = await agent.PromptAsync(JsonSerializer.Deserialize(
-                request.Params,
+                request.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<PromptRequest>())!, ct);
+
             return new JsonRpcResponse
             {
                 Id = request.Id,
@@ -69,9 +81,12 @@ public sealed class AgentSideConnection : IDisposable
 
         endpoint.SetRequestHandler(AgentMethods.SessionLoad, async (request, ct) =>
         {
+            AcpException.ThrowIfParamIsNull(request.Params);
+
             var response = await agent.LoadSessionAsync(JsonSerializer.Deserialize(
-                request.Params,
+                request.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<LoadSessionRequest>())!, ct);
+
             return new JsonRpcResponse
             {
                 Id = request.Id,
@@ -81,9 +96,12 @@ public sealed class AgentSideConnection : IDisposable
 
         endpoint.SetRequestHandler(AgentMethods.SessionSetMode, async (request, ct) =>
         {
+            AcpException.ThrowIfParamIsNull(request.Params);
+
             var response = await agent.SetSessionModeAsync(JsonSerializer.Deserialize(
-                request.Params,
+                request.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<SetSessionModeRequest>())!, ct);
+
             return new JsonRpcResponse
             {
                 Id = request.Id,
@@ -93,9 +111,12 @@ public sealed class AgentSideConnection : IDisposable
 
         endpoint.SetRequestHandler(AgentMethods.SessionSetModel, async (request, ct) =>
         {
+            AcpException.ThrowIfParamIsNull(request.Params);
+
             var response = await agent.SetSessionModelAsync(JsonSerializer.Deserialize(
-                request.Params,
+                request.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<SetSessionModelRequest>())!, ct);
+
             return new JsonRpcResponse
             {
                 Id = request.Id,
@@ -105,20 +126,18 @@ public sealed class AgentSideConnection : IDisposable
 
         endpoint.SetNotificationHandler(AgentMethods.SessionCancel, async (notification, ct) =>
         {
-            if (!notification.Params.HasValue)
-            {
-                throw new AcpException("Params is null", (int)JsonRpcErrorCode.InvalidParams);
-            }
+            AcpException.ThrowIfParamIsNull(notification.Params);
 
             var cancelNotification = JsonSerializer.Deserialize(
-                notification.Params.Value,
+                notification.Params!.Value,
                 AcpJsonSerializerContext.Default.Options.GetTypeInfo<CancelNotification>())!;
+
             await agent.CancelAsync(cancelNotification, ct);
         });
 
         endpoint.SetDefaultRequestHandler(async (request, ct) =>
         {
-            var response = await agent.ExtMethodAsync(request.Method, request.Params, ct);
+            var response = await agent.ExtMethodAsync(request.Method, request.Params ?? default, ct);
             return new JsonRpcResponse
             {
                 Id = request.Id,

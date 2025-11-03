@@ -180,9 +180,18 @@ public sealed class ClientSideConnection : IDisposable, IAcpAgent
             Params = JsonSerializer.SerializeToElement(request, AcpJsonSerializerContext.Default.Options.GetTypeInfo<TRequest>())
         }, cancellationToken);
 
-        if (response.Result == null)
+        if (response.Error != null)
         {
             throw new AcpException($"{response.Error!.Message}", response.Error.Data, response.Error.Code);
+        }
+
+        // HACK: 
+        // In a specific version of Gemini-CLI, the `authenticate` method returns a response (`result: null`) 
+        // that differs from the expected schema. To accommodate this, we are ignoring the null check. 
+        // Since `result` should not be null in any other case, this should generally not be a problem.
+        if (response.Result == null)
+        {
+            return default!;
         }
 
         return JsonSerializer.Deserialize(response.Result.Value, AcpJsonSerializerContext.Default.Options.GetTypeInfo<TResponse>())!;

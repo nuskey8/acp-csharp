@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Text.Json;
 
 namespace AgentClientProtocol;
@@ -7,6 +6,11 @@ public class AcpException(string? message, JsonElement? data, int code, Exceptio
 {
     public JsonElement? ErrorData { get; } = data;
     public int Code { get; } = code;
+
+    public override string ToString()
+    {
+        return $"{Message}: {ErrorData}";
+    }
 
     internal static void ThrowIfParamIsNull(in JsonElement? param)
     {

@@ -6,8 +6,8 @@ namespace AgentClientProtocol;
 [JsonConverter(typeof(SessionUpdateJsonConverter))]
 public abstract record SessionUpdate
 {
-    [JsonPropertyName("type")]
-    public abstract string Type { get; }
+    [JsonPropertyName("sessionUpdate")]
+    public abstract string Update { get; }
 }
 
 public class SessionUpdateJsonConverter : JsonConverter<SessionUpdate>
@@ -17,12 +17,12 @@ public class SessionUpdateJsonConverter : JsonConverter<SessionUpdate>
         using var doc = JsonDocument.ParseValue(ref reader);
         var root = doc.RootElement;
 
-        if (!root.TryGetProperty("type", out var typeProperty))
+        if (!root.TryGetProperty("sessionUpdate", out var sessionUpdateProperty))
         {
-            throw new JsonException("Missing 'type' property in SessionUpdate");
+            throw new JsonException("Missing 'sessionUpdate' property in SessionUpdate");
         }
 
-        var type = typeProperty.GetString();
+        var type = sessionUpdateProperty.GetString();
         return type switch
         {
             "user_message_chunk" => root.Deserialize<UserMessageChunkSessionUpdate>(options),
@@ -45,8 +45,8 @@ public class SessionUpdateJsonConverter : JsonConverter<SessionUpdate>
 
 public record UserMessageChunkSessionUpdate : SessionUpdate
 {
-    [JsonPropertyName("type")]
-    public override string Type => "user_message_chunk";
+    [JsonPropertyName("sessionUpdate")]
+    public override string Update => "user_message_chunk";
 
     [JsonPropertyName("content")]
     public required ContentBlock Content { get; init; }
@@ -54,8 +54,8 @@ public record UserMessageChunkSessionUpdate : SessionUpdate
 
 public record AgentMessageChunkSessionUpdate : SessionUpdate
 {
-    [JsonPropertyName("type")]
-    public override string Type => "agent_message_chunk";
+    [JsonPropertyName("sessionUpdate")]
+    public override string Update => "agent_message_chunk";
 
     [JsonPropertyName("content")]
     public required ContentBlock Content { get; init; }
@@ -63,8 +63,8 @@ public record AgentMessageChunkSessionUpdate : SessionUpdate
 
 public record AgentThoughtChunkSessionUpdate : SessionUpdate
 {
-    [JsonPropertyName("type")]
-    public override string Type => "agent_thought_chunk";
+    [JsonPropertyName("sessionUpdate")]
+    public override string Update => "agent_thought_chunk";
 
     [JsonPropertyName("content")]
     public required ContentBlock Content { get; init; }
@@ -72,8 +72,8 @@ public record AgentThoughtChunkSessionUpdate : SessionUpdate
 
 public record ToolCallSessionUpdate : SessionUpdate
 {
-    [JsonPropertyName("type")]
-    public override string Type => "tool_call";
+    [JsonPropertyName("sessionUpdate")]
+    public override string Update => "tool_call";
 
     [JsonPropertyName("toolCallId")]
     public required string ToolCallId { get; init; }
@@ -102,8 +102,8 @@ public record ToolCallSessionUpdate : SessionUpdate
 
 public record ToolCallUpdateSessionUpdate : SessionUpdate
 {
-    [JsonPropertyName("type")]
-    public override string Type => "tool_call_update";
+    [JsonPropertyName("sessionUpdate")]
+    public override string Update => "tool_call_update";
 
     [JsonPropertyName("toolCallId")]
     public required string ToolCallId { get; init; }
@@ -132,8 +132,8 @@ public record ToolCallUpdateSessionUpdate : SessionUpdate
 
 public record PlanSessionUpdate : SessionUpdate
 {
-    [JsonPropertyName("type")]
-    public override string Type => "plan";
+    [JsonPropertyName("sessionUpdate")]
+    public override string Update => "plan";
 
     [JsonPropertyName("entries")]
     public required PlanEntry[] Entries { get; init; }
@@ -141,8 +141,8 @@ public record PlanSessionUpdate : SessionUpdate
 
 public record AvailableCommandsUpdateSessionUpdate : SessionUpdate
 {
-    [JsonPropertyName("type")]
-    public override string Type => "available_commands_update";
+    [JsonPropertyName("sessionUpdate")]
+    public override string Update => "available_commands_update";
 
     [JsonPropertyName("availableCommands")]
     public required AvailableCommand[] AvailableCommands { get; init; }
@@ -150,8 +150,8 @@ public record AvailableCommandsUpdateSessionUpdate : SessionUpdate
 
 public record CurrentModeUpdateSessionUpdate : SessionUpdate
 {
-    [JsonPropertyName("type")]
-    public override string Type => "current_mode_update";
+    [JsonPropertyName("sessionUpdate")]
+    public override string Update => "current_mode_update";
 
     [JsonPropertyName("currentModeId")]
     public required string CurrentModeId { get; init; }

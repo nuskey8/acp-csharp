@@ -19,7 +19,7 @@ public record PlanEntry
 }
 
 
-[JsonConverter(typeof(CustomizableJsonStringEnumConverter<Role>))]
+[JsonConverter(typeof(CustomizableJsonStringEnumConverter<PlanEntryPriority>))]
 public enum PlanEntryPriority
 {
     [JsonStringEnumMemberName("high")]
@@ -33,7 +33,7 @@ public enum PlanEntryPriority
 }
 
 
-[JsonConverter(typeof(CustomizableJsonStringEnumConverter<Role>))]
+[JsonConverter(typeof(CustomizableJsonStringEnumConverter<PlanEntryStatus>))]
 public enum PlanEntryStatus
 {
     [JsonStringEnumMemberName("pending")]

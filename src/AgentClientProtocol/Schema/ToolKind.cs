@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace AgentClientProtocol;
 
-[JsonConverter(typeof(CustomizableJsonStringEnumConverter<Role>))]
+[JsonConverter(typeof(CustomizableJsonStringEnumConverter<ToolKind>))]
 public enum ToolKind
 {
     [JsonStringEnumMemberName("read")]

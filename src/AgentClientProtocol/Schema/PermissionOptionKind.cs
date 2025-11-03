@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace AgentClientProtocol;
 
-[JsonConverter(typeof(CustomizableJsonStringEnumConverter<Role>))]
+[JsonConverter(typeof(CustomizableJsonStringEnumConverter<PermissionOptionKind>))]
 public enum PermissionOptionKind
 {
     [JsonStringEnumMemberName("allow_once")]

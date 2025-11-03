@@ -4,12 +4,23 @@ using System.Text.Json.Serialization;
 namespace AgentClientProtocol;
 
 [JsonConverter(typeof(RequestPermissionOutcomeJsonConverter))]
-public abstract record RequestPermissionOutcome;
+public abstract record RequestPermissionOutcome
+{
+    [JsonPropertyName("outcome")]
+    public abstract string Outcome { get; }
+}
 
-public record CancelledRequestPermissionOutcome : RequestPermissionOutcome;
+public record CancelledRequestPermissionOutcome : RequestPermissionOutcome
+{
+    [JsonPropertyName("outcome")]
+    public override string Outcome => "cancelled";
+}
 
 public record SelectedRequestPermissionOutcome : RequestPermissionOutcome
 {
+    [JsonPropertyName("outcome")]
+    public override string Outcome => "selected";
+
     [JsonPropertyName("optionId")]
     public required string OptionId { get; init; }
 }
